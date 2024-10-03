@@ -8,4 +8,4 @@ You can search, view, and sort your movie list using a variety of criteria.
 
 ## Class Diagram (WIP) first iteration :)
 
-![UML class diagram](./Class%20Diagram-Watchlist.drawio)
+![UML class diagram](./Class%20Diagram-Watchlist.drawio.svg)
