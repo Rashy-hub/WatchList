@@ -2,9 +2,12 @@
 using Microsoft.AspNetCore.Identity;
 using Watchlist.Data;
 using Watchlist.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 namespace Watchlist.Controllers
 {
+    [Authorize]
     public class MovieListController : Controller
     {
         private readonly ApplicationDbContext _contexte;
@@ -29,12 +32,21 @@ namespace Watchlist.Controllers
             return user?.Id;
         }
 
-      
+
+
         public async Task<IActionResult> Index()
         {
             var id = await GetCurrentUserId();
-           
-            var moviesUser = _contexte.MoviesUser.Where(x => x.IdUser == id);
+
+            if (string.IsNullOrEmpty(id))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var moviesUser = _contexte.MoviesUser
+                .Include(x => x.Movie) 
+                .Where(x => x.IdUser == id);
+
             var model = moviesUser.Select(x => new MovieViewModel
             {
                 IdMovie = x.IdMovie,
@@ -46,7 +58,7 @@ namespace Watchlist.Controllers
             }).ToList();
 
             return View(model);
-            
         }
+
     }
 }
