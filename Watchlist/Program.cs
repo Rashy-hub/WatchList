@@ -9,9 +9,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Pas oublier de rajuoter service Razor Pages sinon ça plante :/
+// Pas oublier de rajuoter service Razor Pages sinon ï¿½a plante :/
 builder.Services.AddRazorPages();
 
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
