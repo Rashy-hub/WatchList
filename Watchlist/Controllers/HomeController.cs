@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Watchlist.Models;
 
+
 namespace Watchlist.Controllers
 {
     public class HomeController : Controller
@@ -13,9 +14,14 @@ namespace Watchlist.Controllers
             _logger = logger;
         }
 
+    
         public IActionResult Index()
         {
-            return View();
+            if (!User.Identity.IsAuthenticated)
+            {
+                return View();
+            }
+            return RedirectToAction("Index", "MovieList");
         }
 
         public IActionResult Privacy()
