@@ -1,41 +1,112 @@
-﻿@model IEnumerable<Watchlist.Data.Movie>
+﻿@model List<Watchlist.Models.MovieViewModel>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Community Movie Database";
 }
 
-<h1>Index</h1>
+<h1>@ViewData["Title"]</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" class="btn btn-primary">Create New Entry</a>
 </p>
 <table class="table">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Year)
-            </th>
-            <th></th>
+            <th>@Html.DisplayNameFor(model => model[0].Title)</th>
+            <th>@Html.DisplayNameFor(model => model[0].Year)</th>
+            <th>Actions</th>
+            <th>Manage</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Title)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Year)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.Title)</td>
+                <td>@Html.DisplayFor(modelItem => item.Year)</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.IdMovie" class="btn btn-sm btn-warning">Edit</a>
+                    <a asp-action="Details" asp-route-id="@item.IdMovie" class="btn btn-sm btn-info">Details</a>
+                    <a asp-action="Delete" asp-route-id="@item.IdMovie" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+                <td>
+                    @if (item.isInTheList)
+                    {
+                        <button data-movieid="@item.IdMovie" data-val="@item.isInTheList" class="btn btn-danger manage-movie-btn">Remove</button>
+                    }
+                    else
+                    {
+                        <button data-movieid="@item.IdMovie" data-val="@item.isInTheList" class="btn btn-success manage-movie-btn">Add</button>
+                    }
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
+
+<!-- Anti-Forgery Token -->
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Retrieve the Anti-Forgery Token
+            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            // Select all manage buttons
+            const manageButtons = document.querySelectorAll("button.manage-movie-btn");
+
+            manageButtons.forEach(button => {
+                button.addEventListener("click", async (event) => {
+                    event.preventDefault();
+
+                    const movieId = button.getAttribute("data-movieid");
+                    const isInList = button.getAttribute("data-val") === "True";
+
+                    // Determine the action based on current state
+                    const actionUrl = isInList ? '/MovieList/RemoveMovie' : '/MovieList/AddMovie';
+
+                    try {
+                        const response = await fetch(actionUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': antiForgeryToken
+                            },
+                            body: JSON.stringify({ movieId: movieId })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || 'Network response was not ok');
+                        }
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            console.log(data.message);
+                            // Toggle button state
+                            if (isInList) {
+                                button.classList.remove('btn-danger');
+                                button.classList.add('btn-success');
+                                button.textContent = 'Add';
+                                button.setAttribute('data-val', 'False');
+                            } else {
+                                button.classList.remove('btn-success');
+                                button.classList.add('btn-danger');
+                                button.textContent = 'Remove';
+                                button.setAttribute('data-val', 'True');
+                            }
+                        } else {
+                            console.error(data.message);
+                            alert(data.message);
+                        }
+                    } catch (error) {
+                        console.error('There was a problem with the fetch operation:', error);
+                        alert(error.message || 'An error occurred while processing your request.');
+                    }
+                });
+            });
+        });
+    </script>
+}
