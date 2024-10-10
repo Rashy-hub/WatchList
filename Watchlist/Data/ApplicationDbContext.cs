@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Watchlist.Data;
 
 namespace Watchlist.Data
 {
@@ -13,15 +14,33 @@ namespace Watchlist.Data
         public DbSet<Movie> Movies { get; set; }
         public DbSet<MovieUser> MoviesUser { get; set; }
 
+        public DbSet<AppUser> AppUsers { get; set; }
+
+
         // We have to use the API Fluent of EF because our associative entity has its own extra properties :)
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // This way we tell to EF to use composite primary key made of IdUser and IdMovie
             base.OnModelCreating(modelBuilder);
-            // MovieList caused errors when mapping with EF core , i choose to ignore it for the moment 
+
+           
             modelBuilder.Entity<AppUser>().Ignore(u => u.MovieList);
+
+            // Composite key for MovieUser
+            modelBuilder.Entity<MovieUser>().HasKey(t => new { t.IdUser, t.IdMovie });
+
+            // Relationship with AppUser
             modelBuilder.Entity<MovieUser>()
-                .HasKey(t => new { t.IdUser, t.IdMovie });
+                .HasOne(mu => mu.User)
+                .WithMany(u => u.MovieList)
+                .HasForeignKey(mu => mu.IdUser);
+
+            // Relationship with Movie
+            modelBuilder.Entity<MovieUser>()
+                .HasOne(mu => mu.Movie)
+                .WithMany(m => m.MovieUsers)
+                .HasForeignKey(mu => mu.IdMovie);
         }
     }
+
 }
+

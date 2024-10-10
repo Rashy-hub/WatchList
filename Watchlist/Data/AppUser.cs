@@ -1,17 +1,19 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Watchlist.Data;
 
-namespace Watchlist.Data
+public class AppUser : IdentityUser
 {
-    public class AppUser: IdentityUser
+    public AppUser() : base()
     {
-
-        public AppUser() : base()
-        {
-            this.MovieList = new HashSet<MovieUser>();
-        }
-
-        public string firstname { get; set; }
-        public virtual ICollection<MovieUser> Movies { get; set; }
-        public HashSet<MovieUser> MovieList { get; private set; }
+        
+        MovieList = new HashSet<MovieUser>();
     }
+
+ 
+    public string firstname { get; set; } 
+
+  
+    public virtual ICollection<MovieUser> MovieList { get; private set; }
+
+
 }
