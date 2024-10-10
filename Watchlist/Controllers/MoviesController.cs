@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging; 
 using Watchlist.Data;
 
 namespace Watchlist.Controllers
@@ -14,18 +16,52 @@ namespace Watchlist.Controllers
     public class MoviesController : Controller
     {
         private readonly ApplicationDbContext _context;
-
-        public MoviesController(ApplicationDbContext context)
+        private readonly ILogger<MoviesController> _logger;
+        private readonly UserManager<AppUser> _userManager;
+      
+        public MoviesController(ApplicationDbContext context, ILogger<MoviesController> logger, UserManager<AppUser> userManager) 
         {
             _context = context;
+            _logger = logger;
+            _userManager = userManager;
+        }
+        private Task<AppUser> GetCurrentUserAsync()
+        {
+            return _userManager.GetUserAsync(HttpContext.User);
         }
 
         // GET: Movies
         public async Task<IActionResult> Index()
         {
-              return _context.Movies != null ? 
-                          View(await _context.Movies.ToListAsync()) :
-                          Problem("Entity set 'ApplicationDbContext.Movies'  is null.");
+            var user = await GetCurrentUserAsync();
+            if (user == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+            if (_context.Movies == null)
+            {
+                return Problem("Entity set 'ApplicationDbContext.Movies' is null.");
+            }
+            //Get all the movies first to display
+            var movies = await _context.Movies.ToListAsync();
+
+        
+            var userMovies = await _context.MoviesUser
+             .Where(mu => mu.IdUser == user.Id)
+             .Select(mu => mu.IdMovie)
+             .ToListAsync();
+
+
+            // Map to MovieViewModel - should work with that
+            var movieViewModels = movies.Select(movie => new Models.MovieViewModel
+            {   IdMovie=movie.Id,
+                Year = movie.Year,
+                Title = movie.Title,
+                isInTheList = userMovies.Contains(movie.Id), //This way we set data-set with correct boolean value
+            }).ToList();
+
+            // Pass the list of MovieViewModel to the view
+            return View(movieViewModels);
         }
 
         // GET: Movies/Details/5
@@ -45,20 +81,34 @@ namespace Watchlist.Controllers
 
             return View(movie);
         }
+        // Get: Movies/Create
 
-        // GET: Movies/Create
+        [HttpGet]
         public IActionResult Create()
         {
-            return View();
+            return View("Create");
         }
 
+
+
         // POST: Movies/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Title,Year")] Movie movie)
         {
+            // Log que la requête POST a été interceptée
+          
+            _logger.LogInformation("Intercepted POST request for Create action with content: {@Movie}", movie);
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors);
+                foreach (var error in errors)
+                {
+                    _logger.LogError("ModelState Error: {ErrorMessage}", error.ErrorMessage);
+                }
+                return View(movie);
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(movie);
@@ -85,8 +135,6 @@ namespace Watchlist.Controllers
         }
 
         // POST: Movies/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Year")] Movie movie)
@@ -144,21 +192,21 @@ namespace Watchlist.Controllers
         {
             if (_context.Movies == null)
             {
-                return Problem("Entity set 'ApplicationDbContext.Movies'  is null.");
+                return Problem("Entity set 'ApplicationDbContext.Movies' is null.");
             }
             var movie = await _context.Movies.FindAsync(id);
             if (movie != null)
             {
                 _context.Movies.Remove(movie);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool MovieExists(int id)
         {
-          return (_context.Movies?.Any(e => e.Id == id)).GetValueOrDefault();
+            return (_context.Movies?.Any(e => e.Id == id)).GetValueOrDefault();
         }
     }
 }
